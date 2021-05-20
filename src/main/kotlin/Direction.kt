@@ -1,5 +1,6 @@
 import net.minecraft.client.Minecraft
 import net.minecraft.util.EnumFacing
+import kotlin.math.abs
 
 
 /**
@@ -44,7 +45,7 @@ enum class Direction(name: String) {
         private fun getClosest(a: Double, b: Double): Double {
             var yaw = Minecraft.getMinecraft().player.rotationYaw.toDouble()
             yaw = if (yaw < -180) 360.let { yaw += it; yaw } else if (yaw > 180) 360.let { yaw -= it; yaw } else yaw
-            return if (Math.abs(yaw - a) < Math.abs(yaw - b)) {
+            return if (abs(yaw - a) < abs(yaw - b)) {
                 a
             } else {
                 b

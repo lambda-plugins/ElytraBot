@@ -1,12 +1,14 @@
 import net.minecraft.client.Minecraft
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
+import kotlin.math.abs
+import kotlin.math.sqrt
 
-var mc = Minecraft.getMinecraft()
+var mc: Minecraft = Minecraft.getMinecraft()
 
 
 object AStar {
-    var check = false
+    private var check = false
 
     /**
      * Generates a path to the given goal.
@@ -76,7 +78,7 @@ object AStar {
     /**
      * Adds the nearby positions to the open list. And updates the best parent for the AStarNodes
      */
-    fun addToOpen(positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, current: BlockPos, goal: BlockPos?, start: BlockPos, open: ArrayList<BlockPos>, closed: ArrayList<BlockPos>): ArrayList<BlockPos>? {
+    private fun addToOpen(positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, current: BlockPos, goal: BlockPos?, start: BlockPos, open: ArrayList<BlockPos>, closed: ArrayList<BlockPos>): ArrayList<BlockPos>? {
         val list = ArrayList<BlockPos>()
         val positions2 = ArrayList<BlockPos>()
         for (pos in positions) {
@@ -118,22 +120,22 @@ object AStar {
     /**
      * Calculates the f cost between pos and goal
      */
-    fun fCost(pos: BlockPos, goal: BlockPos, start: BlockPos): Double {
+    private fun fCost(pos: BlockPos, goal: BlockPos, start: BlockPos): Double {
         // H cost
         val dx = (goal.x - pos.x).toDouble()
         val dz = (goal.z - pos.z).toDouble()
-        val h = Math.sqrt(dx * dx + dz * dz)
+        val h = sqrt(dx * dx + dz * dz)
         return gCost(pos, start) + h
     }
 
     /**
      * Calculates the G Cost
      */
-    fun gCost(pos: BlockPos?, start: BlockPos): Double {
+    private fun gCost(pos: BlockPos?, start: BlockPos): Double {
         val dx = (start.x - pos!!.x).toDouble()
         val dy = (start.y - pos.y).toDouble()
         val dz = (start.z - pos.z).toDouble()
-        return Math.sqrt(Math.abs(dx) + Math.abs(dy) + Math.abs(dz))
+        return sqrt(abs(dx) + abs(dy) + abs(dz))
     }
 
     /**
@@ -147,7 +149,7 @@ object AStar {
                 n = AStarNode.nodes[AStarNode.nodes.size - 1]
             }
             path.add(n.pos)
-            while (n != null && n.parent != null) {
+            while (n?.parent != null) {
                 path.add(n.parent!!)
                 n = AStarNode.getNodeFromBlockpos(n.parent)
             }
