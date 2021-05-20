@@ -1,83 +1,65 @@
-package ElytraBot
-
-
-import ExtraMovment
-import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.module.Category
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.util.MovementUtils.speed
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
-import net.minecraft.util.EnumHand
-
-
-import net.minecraft.util.math.BlockPos
-
-import net.minecraft.init.Items
-
-import java.util.ArrayList
-
-import net.minecraft.util.math.Vec3d
-
-import net.minecraft.network.play.client.CPacketEntityAction
-
-import com.lambda.client.util.Timer
 import com.lambda.client.util.items.allSlots
 import com.lambda.client.util.items.countItem
 import com.lambda.client.util.items.inventorySlots
-import com.lambda.client.util.math.Vec2d
-import com.lambda.client.util.math.Vec2f
-import com.lambda.client.util.math.VectorUtils.toVec3d
-
-import net.minecraft.item.ItemStack
-
-import net.minecraft.util.SoundCategory
-
-import net.minecraft.init.SoundEvents
-import java.lang.Exception
 import com.lambda.client.util.math.VectorUtils.distanceTo
-
-import net.minecraft.util.math.MathHelper
+import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
+import net.minecraft.init.Items
+import net.minecraft.init.SoundEvents
+import net.minecraft.item.ItemStack
+import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.util.EnumHand
+import net.minecraft.util.SoundCategory
+import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.MathHelper
+import net.minecraft.util.math.Vec3d
+import kotlin.math.abs
 
 
-
-internal object ElytraBotModule: PluginModule(
+internal object ElytraBotModule : PluginModule(
     name = "ElytraBot",
     category = Category.MOVEMENT,
     description = "Baritone like Elytra bot module, credit CookieClient",
-    pluginMain = ExtraMovment
+    pluginMain = ElytraBotPlugin
 ) {
 
 
     var thread: Thread? = null
     private var path: ArrayList<BlockPos>? = null
     var goal: BlockPos? = null
-    private  var previous:BlockPos? = null
-    private  var lastSecondPos:BlockPos? = null
+    private var previous: BlockPos? = null
+    private var lastSecondPos: BlockPos? = null
 
     private var jumpY = -1.0
     private var packetsSent = 0
-    private  var lagbackCounter = 0
-    private  var useBaritoneCounter = 0
+    private var lagbackCounter = 0
+    private var useBaritoneCounter = 0
     private var lagback = false
     private var blocksPerSecond = 0.0
     private var blocksPerSecondCounter = 0
     private val blocksPerSecondTimer = TickTimer(TimeUnit.MILLISECONDS)
     private val packetTimer = TickTimer(TimeUnit.MILLISECONDS)
     private val fireworkTimer = TickTimer(TimeUnit.MILLISECONDS)
-    private val takeoffTimer= TickTimer(TimeUnit.MILLISECONDS)
+    private val takeoffTimer = TickTimer(TimeUnit.MILLISECONDS)
     private var direction: Direction? = null
 
     enum class ElytraBotMode {
         Highway, Overworld
     }
+
     enum class ElytraBotTakeOffMode {
         SlowGlide, Jump
     }
+
     enum class ElytraBotFlyMode {
         Firework
     }
+
     var TravelMode = setting("Travel Mode", ElytraBotMode.Overworld)
     var TakeoffMode = setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
     var ElytraMode = setting("Flight Mode", ElytraBotFlyMode.Firework)
@@ -87,7 +69,7 @@ internal object ElytraBotModule: PluginModule(
 
     private val elytraFlyManuverSpeed by setting("Manuver Speed", 1f, 0.0f..10.0f, 0.25f)
 
-    private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f,{ ElytraMode.value == ElytraBotFlyMode.Firework })
+    private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { ElytraMode.value == ElytraBotFlyMode.Firework })
 
     var pathfinding = setting("Pathfinding", true)
 
@@ -100,7 +82,6 @@ internal object ElytraBotModule: PluginModule(
     private val maxY by setting("Firework Delay", 1f, 0.0f..300.0f, 0.25f)
 
 
-
     private fun isItemBroken(itemStack: ItemStack): Boolean { // (100 * damage / max damage) >= (100 - 70)
         return if (itemStack.maxDamage == 0) {
             false
@@ -110,14 +91,12 @@ internal object ElytraBotModule: PluginModule(
     }
 
 
-
-
     init {
         onEnable {
             val up = 1
             if (directional.value) {
                 //Calculate the direction so it will put it to diagonal if the player is on diagonal highway.
-                direction = if (Math.abs(mc.player.posX - mc.player.posZ) <= 5 && Math.abs(mc.player.posX) > 10 && Math.abs(mc.player.posZ) > 10 && TravelMode.value== ElytraBotMode.Highway) {
+                direction = if (abs(mc.player.posX - mc.player.posZ) <= 5 && abs(mc.player.posX) > 10 && abs(mc.player.posZ) > 10 && TravelMode.value == ElytraBotMode.Highway) {
                     Direction.getDiagonalDirection()
                 } else {
                     Direction.getDirection()
@@ -125,7 +104,7 @@ internal object ElytraBotModule: PluginModule(
                 goal = generateGoalFromDirection(direction, up)
             } else {
 
-                if(goal==null){
+                if (goal == null) {
                     MessageSendHelper.sendChatMessage("You need a goal position")
                     disable()
                 }
@@ -140,7 +119,8 @@ internal object ElytraBotModule: PluginModule(
                         }
                         try {
                             sleep(50)
-                        } catch(e: Exception){}
+                        } catch (e: Exception) {
+                        }
 
                     }
                 }
@@ -164,21 +144,22 @@ internal object ElytraBotModule: PluginModule(
 
             //clearStatus()
             //BaritoneUtil.forceCancel()
-            if(thread!==null)
-            thread!!.suspend()
+            if (thread != null)
+                thread!!.suspend()
             thread = null
         }
 
 
     }
+
     fun loop() {
         if (mc.player == null) {
             return
         }
-        if (goal == null){
+        if (goal == null) {
             disable()
             MessageSendHelper.sendChatMessage("You need a goal position")
-            return;
+            return
         }
 
         //Check if the goal is reached and then stop
@@ -190,21 +171,21 @@ internal object ElytraBotModule: PluginModule(
         }
 
         //Check if there is an elytra equipped if not then equip it or toggle off if no elytra in inventory
-        if (mc.player.inventory.armorInventory[2].item !== Items.ELYTRA || isItemBroken(mc.player.inventory.armorInventory[2])) {
-                MessageSendHelper.sendChatMessage("$chatName You need an elytra.")
-                disable()
-                return
+        if (mc.player.inventory.armorInventory[2].item != Items.ELYTRA || isItemBroken(mc.player.inventory.armorInventory[2])) {
+            MessageSendHelper.sendChatMessage("$chatName You need an elytra.")
+            disable()
+            return
         }
 
         //Toggle off if no fireworks while using firework mode
-        if (ElytraMode.value == ElytraBotFlyMode.Firework && !(mc.player.inventorySlots.countItem(Items.FIREWORKS)>0)) {
+        if (ElytraMode.value == ElytraBotFlyMode.Firework && !(mc.player.inventorySlots.countItem(Items.FIREWORKS) > 0)) {
             MessageSendHelper.sendChatMessage("You need fireworks as your using firework mode")
             disable()
             return
         }
 
         //Wait still if in unloaded chunk
-        if (!mc.world.getChunk(mc.player.position).isLoaded()) {
+        if (!mc.world.getChunk(mc.player.position).isLoaded) {
             //setStatus("We are in unloaded chunk. Waiting")
             mc.player.setVelocity(0.0, 0.0, 0.0)
             return
@@ -249,7 +230,7 @@ internal object ElytraBotModule: PluginModule(
                 generatePath()
                 mc.player.jump()
             } else if (mc.player.posY < mc.player.lastTickPosY) {
-                if (TakeoffMode.value== ElytraBotTakeOffMode.SlowGlide) {
+                if (TakeoffMode.value == ElytraBotTakeOffMode.SlowGlide) {
                     mc.player.setVelocity(0.0, -0.04, 0.0)
                 }
 
@@ -262,43 +243,43 @@ internal object ElytraBotModule: PluginModule(
                         packetTimer.reset()
                         packetsSent++
                     }
-                } else if (packetTimer.time>=15000){//hasPassed(15000)) {
+                } else if (packetTimer.time >= 15000) {//hasPassed(15000)) {
                     packetsSent = 0
                 } else {
                     //setStatus("Waiting for 15s before sending elytra open packets again")
                 }
             }
             return
-        }  else {
-            packetsSent = 0;
+        } else {
+            packetsSent = 0
 
             //If we arent moving anywhere then activate usebaritone
-            var speed = mc.player.speed
+            val speed = mc.player.speed
 
             if (ElytraMode.value == ElytraBotFlyMode.Firework) {
                 //Prevent lagback on 2b2t by not clicking on fireworks. I hope hause would fix hes plugins tho
                 if (speed > 3) {
-                    lagback = true;
+                    lagback = true
                 }
 
                 //Remove lagback thing after it stops and click on fireworks again.
                 if (lagback) {
                     if (speed < 1) {
-                        lagbackCounter++;
+                        lagbackCounter++
                         if (lagbackCounter > 3) {
-                            lagback = false;
-                            lagbackCounter = 0;
+                            lagback = false
+                            lagbackCounter = 0
                         }
                     } else {
-                        lagbackCounter = 0;
+                        lagbackCounter = 0
                     }
                 }
                 //
                 //Click on fireworks
 
-                if (fireworkTimer.tick((fireworkDelay*1000).toInt()) && !lagback) {
+                if (fireworkTimer.tick((fireworkDelay * 1000).toInt()) && !lagback) {
 
-                    clickOnFirework();
+                    clickOnFirework()
                 }
             }
         }
@@ -320,7 +301,7 @@ internal object ElytraBotModule: PluginModule(
         val removePositions = ArrayList<BlockPos>()
         for (pos in path!!) {
             //if (!remove && BlockUtil.distance(pos, getPlayerPos()) <= distance) {
-            if (!remove && mc.player.position.distanceSq(pos)<= distance) {
+            if (!remove && mc.player.position.distanceSq(pos) <= distance) {
 
                 remove = true
             }
@@ -372,16 +353,16 @@ internal object ElytraBotModule: PluginModule(
 //                    rotate(Vec2f(rotation[0],rotation[1]))
 //                }
 
-                mc.player.rotationYaw = rotation[0];
-                mc.player.rotationPitch = rotation[1];
+                mc.player.rotationYaw = rotation[0]
+                mc.player.rotationPitch = rotation[1]
             }
         }
     }
 
     //Generate path
-    fun generatePath() {
+    private fun generatePath() {
         //The positions the AStar algorithm is allowed to move from current.
-        var positions = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
+        val positions = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
             BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1),
             BlockPos(0, -1, 0), BlockPos(0, 1, 0))
         var checkPositions = ArrayList<BlockPos>()
@@ -437,13 +418,12 @@ internal object ElytraBotModule: PluginModule(
 //    }
 
 
-
-    fun clickOnFirework() {
-        if (mc.player.heldItemMainhand.item !== Items.FIREWORKS) {
+    private fun clickOnFirework() {
+        if (mc.player.heldItemMainhand.item != Items.FIREWORKS) {
             //InventoryUtil.switchItem(InventoryUtil.getSlot(Items.FIREWORKS), false)
-                var slot: Int = -1;
+            var slot: Int = -1
             for (itemStack in mc.player.allSlots) {
-                if (itemStack.equals(Items.FIREWORKS)) {
+                if (itemStack == Items.FIREWORKS) {
 
                     slot = itemStack.slotIndex
                 }
@@ -458,7 +438,7 @@ internal object ElytraBotModule: PluginModule(
 
     }
 
-    fun generateGoalFromDirection(direction: Direction?, up: Int): BlockPos? {
+    private fun generateGoalFromDirection(direction: Direction?, up: Int): BlockPos? {
         return if (direction === Direction.ZM) {
             BlockPos(0.0, mc.player.posY + up, mc.player.posZ - 42042069)
         } else if (direction === Direction.ZP) {
@@ -478,7 +458,7 @@ internal object ElytraBotModule: PluginModule(
         }
     }
 
-    fun isNextPathTooFar(): Boolean {
+    private fun isNextPathTooFar(): Boolean {
         return try {
             //BlockUtil.distance(getPlayerPos(), path!![path!!.size - 1]) > 15
             mc.player.position.distanceTo(path!![path!!.size - 1]) > 15

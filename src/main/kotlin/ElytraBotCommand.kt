@@ -1,6 +1,4 @@
-import ElytraBot.ElytraBotModule
 import com.lambda.client.command.ClientCommand
-import com.lambda.client.manager.managers.FriendManager
 import com.lambda.client.util.text.MessageSendHelper
 import net.minecraft.util.math.BlockPos
 
@@ -32,7 +30,7 @@ object ElytraBotCommand : ClientCommand(
         literal("goal", "coordinates") {
             literal("clear") {
                 executeSafe("Clear the current goal.") {
-                    ElytraBotModule.goal = null;
+                    ElytraBotModule.goal = null
                 }
             }
 
@@ -53,7 +51,7 @@ object ElytraBotCommand : ClientCommand(
         literal("path") {
             literal("clear") {
                 executeSafe("clears current path") {
-                    ElytraBotModule.goal = null;
+                    ElytraBotModule.goal = null
                     ElytraBotModule.disable()
                 }
             }

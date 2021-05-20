@@ -1,20 +1,20 @@
 [
   {
-    "modid": "`ExtraMovment`",
-    "name": "`ExtraMovment`",
-    "description": "does absolutely nothing",
+    "modid": "ElytraBot",
+    "name": "ElytraBot",
+    "description": "AStar elytra bot",
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "lambda-client.com",
     "updateUrl": "",
     "authorList": [
-      "me",
-      "you"
+      "bebeli555",
+      "czho",
+      "Constructor"
     ],
     "credits": "",
     "logoFile": "",
     "screenshots": [],
-    "dependencies": [],
-    "test": ""
+    "dependencies": []
   }
 ]

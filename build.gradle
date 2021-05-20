@@ -1,8 +1,6 @@
 version project.modVersion
 group project.modGroup
 
-wrapper { gradleVersion = '6.8.3' }
-
 buildscript {
     repositories {
         maven { url = 'https://files.minecraftforge.net/maven' }
@@ -25,6 +23,7 @@ compileKotlin {
     kotlinOptions {
         jvmTarget = "1.8"
         useIR = true
+        freeCompilerArgs += '-Xlambdas=indy'
     }
 }
 
@@ -74,6 +73,9 @@ configurations {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2855'
+
+    // API coming soon
+//    implementation 'com.github.lambda-client:lambda:2.06'
     implementation(files("lib/lambda-2.04.xx-dev-api.jar"))
 
     implementation('org.spongepowered:mixin:0.7.11-SNAPSHOT') {

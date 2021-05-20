@@ -1,11 +1,12 @@
 {
-  "name": "Extra Movment",
-  "version": "0.1",
+  "name": "ElytraBot",
+  "version": "1.0",
   "authors": [
     "bebeli555",
-    "czho"
+    "czho",
+    "Constructor"
   ],
-  "description": "Addes extra moment modules",
-  "main_class": "ExtraMovment",
-  "min_api_version": "2.04.01"
+  "description": "AStar elytra bot",
+  "main_class": "ElytraBotPlugin",
+  "min_api_version": "2.05.01"
 }

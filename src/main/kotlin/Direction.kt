@@ -1,5 +1,3 @@
-package ElytraBot
-
 import net.minecraft.client.Minecraft
 import net.minecraft.util.EnumFacing
 

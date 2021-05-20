@@ -1,7 +1,6 @@
-import ElytraBot.ElytraBotModule
 import com.lambda.client.plugin.api.Plugin
 
-internal object ExtraMovment: Plugin() {
+internal object ElytraBotPlugin : Plugin() {
 
     override fun onLoad() {
         // Load any modules, commands, or HUD elements here
