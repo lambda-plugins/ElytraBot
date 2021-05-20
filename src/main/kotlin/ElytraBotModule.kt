@@ -1,19 +1,23 @@
+import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.HotbarManager
+import com.lambda.client.manager.managers.HotbarManager.serverSideItem
+import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
 import com.lambda.client.module.Category
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.util.MovementUtils.speed
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
-import com.lambda.client.util.items.allSlots
-import com.lambda.client.util.items.countItem
-import com.lambda.client.util.items.inventorySlots
+import com.lambda.client.util.items.*
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
+import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.init.Items
 import net.minecraft.init.SoundEvents
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.network.play.client.CPacketPlayerTryUseItem
 import net.minecraft.util.EnumHand
 import net.minecraft.util.SoundCategory
 import net.minecraft.util.math.BlockPos
@@ -66,6 +70,7 @@ internal object ElytraBotModule : PluginModule(
     var travelMode by setting("Travel Mode", ElytraBotMode.Overworld)
     private var takeoffMode by setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
     private var elytraMode by setting("Flight Mode", ElytraBotFlyMode.Firework)
+    private val spoofHotbar by setting("Spoof Hotbar", false)
     //private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
     private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { elytraMode == ElytraBotFlyMode.Firework })
@@ -115,28 +120,30 @@ internal object ElytraBotModule : PluginModule(
         safeListener<TickEvent.ClientTickEvent> {
             if (goal == null) {
                 disable()
-                MessageSendHelper.sendChatMessage("You need a goal position")
+                sendChatMessage("You need a goal position")
                 return@safeListener
             }
 
             //Check if the goal is reached and then stop
-            if (player.positionVector.distanceTo(goal!!.toVec3d()) < 15) {
-                world.playSound(player.position, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.AMBIENT, 100.0f, 18.0f, true)
-                MessageSendHelper.sendChatMessage("$chatName Goal reached!.")
-                disable()
-                return@safeListener
+            goal?.let {
+                if (player.positionVector.distanceTo(it.toVec3d()) < 15) {
+                    world.playSound(player.position, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.AMBIENT, 100.0f, 18.0f, true)
+                    sendChatMessage("$chatName Goal reached!.")
+                    disable()
+                    return@safeListener
+                }
             }
 
             //Check if there is an elytra equipped if not then equip it or toggle off if no elytra in inventory
             if (player.inventory.armorInventory[2].item != Items.ELYTRA || isItemBroken(player.inventory.armorInventory[2])) {
-                MessageSendHelper.sendChatMessage("$chatName You need an elytra.")
+                sendChatMessage("$chatName You need an elytra.")
                 disable()
                 return@safeListener
             }
 
             //Toggle off if no fireworks while using firework mode
             if (elytraMode == ElytraBotFlyMode.Firework && player.inventorySlots.countItem(Items.FIREWORKS) <= 0) {
-                MessageSendHelper.sendChatMessage("You need fireworks as your using firework mode")
+                sendChatMessage("You need fireworks as your using firework mode")
                 disable()
                 return@safeListener
             }
@@ -234,7 +241,7 @@ internal object ElytraBotModule : PluginModule(
 
                     //Click on fireworks
                     if (player.speed < 0.8 && !lagback && fireworkTimer.tick((fireworkDelay * 1000).toInt())) {
-                        clickOnFirework()
+                        activateFirework()
                     }
                 }
             }
@@ -324,52 +331,61 @@ internal object ElytraBotModule : PluginModule(
     }
 
     //Generate path
-    private fun generatePath() {
+    private fun SafeClientEvent.generatePath() {
         //The positions the AStar algorithm is allowed to move from current.
         val positions = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
             BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1),
             BlockPos(0, -1, 0), BlockPos(0, 1, 0))
+
         var checkPositions = ArrayList<BlockPos>()
-        if (travelMode == ElytraBotMode.Highway) {
-            val list = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
-                BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1))
-            checkPositions = ArrayList(list.asList())
-        } else if (travelMode == ElytraBotMode.Overworld) {
-            val radius = 3
-            for (x in -radius until radius) {
-                for (z in -radius until radius) {
-                    for (y in radius downTo -radius + 1) {
-                        checkPositions.add(BlockPos(x, y, z))
+
+        when (travelMode) {
+            ElytraBotMode.Highway -> {
+                val list = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
+                    BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1))
+                checkPositions = ArrayList(list.asList())
+            }
+            ElytraBotMode.Overworld -> {
+                val radius = 3
+                for (x in -radius until radius) {
+                    for (z in -radius until radius) {
+                        for (y in radius downTo -radius + 1) {
+                            checkPositions.add(BlockPos(x, y, z))
+                        }
                     }
                 }
             }
         }
 
-        if (path == null || path!!.size == 0 || isNextPathTooFar() || mc.player.onGround) {
+        if (path == null || path!!.size == 0 || isNextPathTooFar() || player.onGround) {
             var start: BlockPos?
             start = when {
                 travelMode == ElytraBotMode.Overworld -> {
-                    mc.player.position.add(0, 4, 0)
+                    player.position.add(0, 4, 0)
                 }
-                abs(jumpY - mc.player.posY) <= 2 -> {
-                    BlockPos(mc.player.posX, jumpY + 1, mc.player.posZ)
+                abs(jumpY - player.posY) <= 2 -> {
+                    BlockPos(player.posX, jumpY + 1, player.posZ)
                 }
                 else -> {
-                    mc.player.position.add(0, 1, 0)
+                    player.position.add(0, 1, 0)
                 }
             }
             if (isNextPathTooFar()) {
-                start = mc.player.position
+                start = player.position
             }
-            path = start?.let { AStar.generatePath(it, goal!!, positions, checkPositions, 500) }
+            path = start?.let {
+                goal?.let { goalPos ->
+                    AStar.generatePath(it, goalPos, positions, checkPositions, 500)
+                }
+            }
 
         } else {
-            val temp: ArrayList<BlockPos> = AStar.generatePath(path!![0], goal!!, positions, checkPositions, 500)
-            try {
-                temp.addAll(path!!)
-            } catch (ignored: NullPointerException) {
+            path = path?.let { safePath ->
+                goal?.let { safeGoal ->
+                    AStar.generatePath(safePath[0], safeGoal, positions, checkPositions, 500)
+                }
+
             }
-            path = temp
         }
         //RenderPath.setPath(path, Color(255, 0, 0, 150))
     }
@@ -386,24 +402,24 @@ internal object ElytraBotModule : PluginModule(
 //    }
 
 
-    private fun clickOnFirework() {
-        if (mc.player.heldItemMainhand.item != Items.FIREWORKS) {
-            //InventoryUtil.switchItem(InventoryUtil.getSlot(Items.FIREWORKS), false)
-            var slot: Int = -1
-            for (itemStack in mc.player.allSlots) {
-                if (itemStack == Items.FIREWORKS) {
+    private fun SafeClientEvent.activateFirework() {
+        if (player.heldItemMainhand.item != Items.FIREWORKS) {
+            if (spoofHotbar) {
+                val slot = if (player.serverSideItem.item == Items.FIREWORKS) HotbarManager.serverSideHotbar
+                else player.hotbarSlots.firstItem(Items.FIREWORKS)?.hotbarSlot
 
-                    slot = itemStack.slotIndex
+                slot?.let {
+                    spoofHotbar(it, 1000L)
+                }
+            } else {
+                if (player.serverSideItem.item != Items.FIREWORKS) {
+                    player.hotbarSlots.firstItem(Items.FIREWORKS)?.let {
+                        swapToSlot(it)
+                    }
                 }
             }
-            //if (slot == -1){return;}
-            //mc.player.inventory.currentItem = slot;
         }
-
-        //Click
-        mc.playerController.processRightClick(mc.player, mc.world, EnumHand.MAIN_HAND)
-        //fireworkTimer.
-
+        connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
     }
 
     private fun generateGoalFromDirection(direction: Direction?, up: Int): BlockPos {
@@ -435,10 +451,9 @@ internal object ElytraBotModule : PluginModule(
         }
     }
 
-    private fun isNextPathTooFar(): Boolean {
+    private fun SafeClientEvent.isNextPathTooFar(): Boolean {
         return try {
-            //BlockUtil.distance(getPlayerPos(), path!![path!!.size - 1]) > 15
-            mc.player.position.distanceTo(path!![path!!.size - 1]) > 15
+            player.position.distanceTo(path!![path!!.size - 1]) > 15
         } catch (e: Exception) {
             false
         }
