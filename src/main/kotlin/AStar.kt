@@ -91,13 +91,13 @@ object AStar {
                     checkPositions2.add(pos.add(b.x, b.y, b.z))
                 }
                 for (check in checkPositions2) {
-                    if (ElytraBotModule.TravelMode.value == ElytraBotModule.ElytraBotMode.Highway && !mc.world.getChunk(check).isLoaded) {
+                    if (ElytraBotModule.TravelMode == ElytraBotModule.ElytraBotMode.Highway && !mc.world.getChunk(check).isLoaded) {
                         return null
                     }
                     if (mc.world.getBlockState(check).material.isSolid || !mc.world.getChunk(check).isLoaded) {
                         continue@outer
                     }
-                    if (mc.world.getBlockState(check) === Blocks.LAVA && ElytraBotModule.avoidLava.value) {
+                    if (mc.world.getBlockState(check) == Blocks.LAVA && ElytraBotModule.avoidLava) {
                         continue@outer
                     }
 
