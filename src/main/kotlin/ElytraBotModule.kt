@@ -63,12 +63,12 @@ internal object ElytraBotModule : PluginModule(
         Firework
     }
 
-    var TravelMode by setting("Travel Mode", ElytraBotMode.Overworld)
-    private var TakeoffMode by setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
-    private var ElytraMode by setting("Flight Mode", ElytraBotFlyMode.Firework)
+    var travelMode by setting("Travel Mode", ElytraBotMode.Overworld)
+    private var takeoffMode by setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
+    private var elytraMode by setting("Flight Mode", ElytraBotFlyMode.Firework)
     //private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
-    private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { ElytraMode == ElytraBotFlyMode.Firework })
+    private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { elytraMode == ElytraBotFlyMode.Firework })
     var pathfinding by setting("Pathfinding", true)
     var avoidLava by setting("AvoidLava", true)
     private var directional by setting("Directional", false)
@@ -80,7 +80,7 @@ internal object ElytraBotModule : PluginModule(
             val up = 1
             if (directional) {
                 //Calculate the direction so it will put it to diagonal if the player is on diagonal highway.
-                direction = if (abs(mc.player.posX - mc.player.posZ) <= 5 && abs(mc.player.posX) > 10 && abs(mc.player.posZ) > 10 && TravelMode == ElytraBotMode.Highway) {
+                direction = if (abs(mc.player.posX - mc.player.posZ) <= 5 && abs(mc.player.posX) > 10 && abs(mc.player.posZ) > 10 && travelMode == ElytraBotMode.Highway) {
                     Direction.getDiagonalDirection()
                 } else {
                     Direction.getDirection()
@@ -135,7 +135,7 @@ internal object ElytraBotModule : PluginModule(
             }
 
             //Toggle off if no fireworks while using firework mode
-            if (ElytraMode == ElytraBotFlyMode.Firework && player.inventorySlots.countItem(Items.FIREWORKS) <= 0) {
+            if (elytraMode == ElytraBotFlyMode.Firework && player.inventorySlots.countItem(Items.FIREWORKS) <= 0) {
                 MessageSendHelper.sendChatMessage("You need fireworks as your using firework mode")
                 disable()
                 return@safeListener
@@ -187,7 +187,7 @@ internal object ElytraBotModule : PluginModule(
                     generatePath()
                     player.jump()
                 } else if (player.posY < player.lastTickPosY) {
-                    if (TakeoffMode == ElytraBotTakeOffMode.SlowGlide) {
+                    if (takeoffMode == ElytraBotTakeOffMode.SlowGlide) {
                         player.setVelocity(0.0, -0.04, 0.0)
                     }
 
@@ -213,7 +213,7 @@ internal object ElytraBotModule : PluginModule(
                 //If we arent moving anywhere then activate usebaritone
                 val speed = player.speed
 
-                if (ElytraMode == ElytraBotFlyMode.Firework) {
+                if (elytraMode == ElytraBotFlyMode.Firework) {
                     //Prevent lagback on 2b2t by not clicking on fireworks. I hope hause would fix hes plugins tho
                     if (speed > 3) {
                         lagback = true
@@ -249,7 +249,7 @@ internal object ElytraBotModule : PluginModule(
             //Distance how far to remove the upcoming path.
             //The higher it is the smoother the movement will be but it will need more space.
             var distance = 12
-            if (TravelMode == ElytraBotMode.Highway) {
+            if (travelMode == ElytraBotMode.Highway) {
                 distance = 2
             }
 
@@ -292,7 +292,7 @@ internal object ElytraBotModule : PluginModule(
 //                    //addToStatus("Estimated fireworks needed: " + ChatFormatting.GOLD + (seconds / fireworkDelay.doubleValue()) as Int, 2)
 //                }
                 }
-                if (ElytraMode == ElytraBotFlyMode.Firework) {
+                if (elytraMode == ElytraBotFlyMode.Firework) {
                     //Rotate head to next position
                     val pos = Vec3d(path!![path!!.size - 1]).add(0.5, 0.5, 0.5)
 
@@ -332,11 +332,11 @@ internal object ElytraBotModule : PluginModule(
             BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1),
             BlockPos(0, -1, 0), BlockPos(0, 1, 0))
         var checkPositions = ArrayList<BlockPos>()
-        if (TravelMode == ElytraBotMode.Highway) {
+        if (travelMode == ElytraBotMode.Highway) {
             val list = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
                 BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1))
             checkPositions = ArrayList(list.asList())
-        } else if (TravelMode == ElytraBotMode.Overworld) {
+        } else if (travelMode == ElytraBotMode.Overworld) {
             val radius = 3
             for (x in -radius until radius) {
                 for (z in -radius until radius) {
@@ -350,7 +350,7 @@ internal object ElytraBotModule : PluginModule(
         if (path == null || path!!.size == 0 || isNextPathTooFar() || mc.player.onGround) {
             var start: BlockPos?
             start = when {
-                TravelMode == ElytraBotMode.Overworld -> {
+                travelMode == ElytraBotMode.Overworld -> {
                     mc.player.position.add(0, 4, 0)
                 }
                 abs(jumpY - mc.player.posY) <= 2 -> {
