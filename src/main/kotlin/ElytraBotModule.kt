@@ -231,11 +231,9 @@ internal object ElytraBotModule : PluginModule(
                             lagbackCounter = 0
                         }
                     }
-                    //
+
                     //Click on fireworks
-
-                    if (fireworkTimer.tick((fireworkDelay * 1000).toInt()) && !lagback) {
-
+                    if (player.speed < 0.8 && !lagback && fireworkTimer.tick((fireworkDelay * 1000).toInt())) {
                         clickOnFirework()
                     }
                 }
