@@ -1,0 +1,11 @@
+{
+  "name": "Extra Movment",
+  "version": "0.1",
+  "authors": [
+    "bebeli555",
+    "czho"
+  ],
+  "description": "Addes extra moment modules",
+  "main_class": "ExtraMovment",
+  "min_api_version": "2.04.01"
+}
