@@ -16,7 +16,7 @@ object ElytraBotCommand : ClientCommand(
 
                 int("y/z") { yArg ->
                     executeSafe("Set goal to X Z.") {
-                        ElytraBotModule.goal = BlockPos(xArg, 0, yArg)
+                        ElytraBotModule.goal = BlockPos(xArg.value, 0, yArg.value)
                         ElytraBotModule.enable()
 
                     }
@@ -41,7 +41,7 @@ object ElytraBotCommand : ClientCommand(
 
                 int("y/z") { yArg ->
                     executeSafe("Set goal to X Z.") {
-                        ElytraBotModule.goal = BlockPos(xArg, 0, yArg)
+                        ElytraBotModule.goal = BlockPos(xArg.value, 0, yArg.value)
                     }
                 }
             }
