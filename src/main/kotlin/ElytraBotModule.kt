@@ -139,37 +139,37 @@ internal object ElytraBotModule : PluginModule(
             }
 
             //Check if the goal is reached and then stop
-            if (Companion.mc.player.positionVector.distanceTo(goal!!.toVec3d()) < 15) {
-                Companion.mc.world.playSound(Companion.mc.player.position, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.AMBIENT, 100.0f, 18.0f, true)
+            if (player.positionVector.distanceTo(goal!!.toVec3d()) < 15) {
+                world.playSound(player.position, SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.AMBIENT, 100.0f, 18.0f, true)
                 MessageSendHelper.sendChatMessage("$chatName Goal reached!.")
                 disable()
                 return@safeListener
             }
 
             //Check if there is an elytra equipped if not then equip it or toggle off if no elytra in inventory
-            if (Companion.mc.player.inventory.armorInventory[2].item != Items.ELYTRA || isItemBroken(Companion.mc.player.inventory.armorInventory[2])) {
+            if (player.inventory.armorInventory[2].item != Items.ELYTRA || isItemBroken(player.inventory.armorInventory[2])) {
                 MessageSendHelper.sendChatMessage("$chatName You need an elytra.")
                 disable()
                 return@safeListener
             }
 
             //Toggle off if no fireworks while using firework mode
-            if (ElytraMode.value == ElytraBotFlyMode.Firework && Companion.mc.player.inventorySlots.countItem(Items.FIREWORKS) <= 0) {
+            if (ElytraMode.value == ElytraBotFlyMode.Firework && player.inventorySlots.countItem(Items.FIREWORKS) <= 0) {
                 MessageSendHelper.sendChatMessage("You need fireworks as your using firework mode")
                 disable()
                 return@safeListener
             }
 
             //Wait still if in unloaded chunk
-            if (!Companion.mc.world.getChunk(Companion.mc.player.position).isLoaded) {
+            if (!world.getChunk(player.position).isLoaded) {
                 //setStatus("We are in unloaded chunk. Waiting")
-                Companion.mc.player.setVelocity(0.0, 0.0, 0.0)
+                player.setVelocity(0.0, 0.0, 0.0)
                 return@safeListener
             }
 
 
 
-            if (!Companion.mc.player.isElytraFlying) {
+            if (!player.isElytraFlying) {
                 //ElytraFly.toggle(false)
 
 //            //If there is a block above then use baritone
@@ -201,20 +201,20 @@ internal object ElytraBotModule : PluginModule(
                 fireworkTimer.reset()
 
                 //Jump if on ground
-                if (Companion.mc.player.onGround) {
-                    jumpY = Companion.mc.player.posY
+                if (player.onGround) {
+                    jumpY = player.posY
                     generatePath()
-                    Companion.mc.player.jump()
-                } else if (Companion.mc.player.posY < Companion.mc.player.lastTickPosY) {
+                    player.jump()
+                } else if (player.posY < player.lastTickPosY) {
                     if (TakeoffMode.value == ElytraBotTakeOffMode.SlowGlide) {
-                        Companion.mc.player.setVelocity(0.0, -0.04, 0.0)
+                        player.setVelocity(0.0, -0.04, 0.0)
                     }
 
                     //Dont send anymore packets for about 15 seconds if the takeoff isn't successful.
                     //Bcs 2b2t has this annoying thing where it will not let u open elytra if u dont stop sending the packets for a while
                     if (packetsSent <= 15) {
                         if (takeoffTimer.time >= 650) {
-                            Companion.mc.connection!!.sendPacket(CPacketEntityAction(Companion.mc.player, CPacketEntityAction.Action.START_FALL_FLYING))
+                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
                             takeoffTimer.reset()
                             packetTimer.reset()
                             packetsSent++
@@ -230,7 +230,7 @@ internal object ElytraBotModule : PluginModule(
                 packetsSent = 0
 
                 //If we arent moving anywhere then activate usebaritone
-                val speed = Companion.mc.player.speed
+                val speed = player.speed
 
                 if (ElytraMode.value == ElytraBotFlyMode.Firework) {
                     //Prevent lagback on 2b2t by not clicking on fireworks. I hope hause would fix hes plugins tho
@@ -277,7 +277,7 @@ internal object ElytraBotModule : PluginModule(
             val removePositions = ArrayList<BlockPos>()
             for (pos in path!!) {
                 //if (!remove && BlockUtil.distance(pos, getPlayerPos()) <= distance) {
-                if (!remove && Companion.mc.player.position.distanceSq(pos) <= distance) {
+                if (!remove && player.position.distanceSq(pos) <= distance) {
 
                     remove = true
                 }
@@ -315,7 +315,7 @@ internal object ElytraBotModule : PluginModule(
                     //Rotate head to next position
                     val pos = Vec3d(path!![path!!.size - 1]).add(0.5, 0.5, 0.5)
 
-                    val eyesPos = Vec3d(Companion.mc.player.posX, Companion.mc.player.posY + Companion.mc.player.getEyeHeight(), Companion.mc.player.posZ)
+                    val eyesPos = Vec3d(player.posX, player.posY + player.getEyeHeight(), player.posZ)
                     val diffX = pos.x - eyesPos.x
                     val diffY = pos.y - eyesPos.y
                     val diffZ = pos.z - eyesPos.z
@@ -323,14 +323,14 @@ internal object ElytraBotModule : PluginModule(
                     val yaw = Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f
                     val pitch = (-Math.toDegrees(atan2(diffY, diffXZ))).toFloat()
 
-                    val rotation = floatArrayOf(Companion.mc.player.rotationYaw + MathHelper.wrapDegrees(yaw - Companion.mc.player.rotationYaw), Companion.mc.player.rotationPitch + MathHelper.wrapDegrees(pitch - Companion.mc.player.rotationPitch))
+                    val rotation = floatArrayOf(player.rotationYaw + MathHelper.wrapDegrees(yaw - player.rotationYaw), player.rotationPitch + MathHelper.wrapDegrees(pitch - player.rotationPitch))
 
 //                sendPlayerPacket {
 //                    rotate(Vec2f(rotation[0],rotation[1]))
 //                }
 
-                    Companion.mc.player.rotationYaw = rotation[0]
-                    Companion.mc.player.rotationPitch = rotation[1]
+                    player.rotationYaw = rotation[0]
+                    player.rotationPitch = rotation[1]
                 }
             }
         }
