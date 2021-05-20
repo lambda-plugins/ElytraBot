@@ -24,8 +24,6 @@ object ElytraBotCommand : ClientCommand(
 
                 }
             }
-
-
         }
         literal("goal", "coordinates") {
             literal("clear") {

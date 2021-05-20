@@ -73,7 +73,7 @@ internal object ElytraBotModule : PluginModule(
     var avoidLava by setting("AvoidLava", true)
     private var directional by setting("Directional", false)
     private var toggleOnPop by setting("ToggleOnPop", false)
-    private val maxY by setting("Firework Delay", 1f, 0.0f..300.0f, 0.25f)
+    private val maxY by setting("Max Y", 1f, 0.0f..300.0f, 0.25f)
 
     init {
         onEnable {
