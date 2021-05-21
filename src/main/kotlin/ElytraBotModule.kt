@@ -175,20 +175,19 @@ internal object ElytraBotModule : PluginModule(
 
                 // Jump if on ground
                 if (player.onGround) {
-//                    jumpY = player.posY
-//                    defaultScope.launch {
-//                        generatePath()
-//                    }
-//                    player.jump()
-                } else if (player.posY < player.lastTickPosY) {
+                    jumpY = player.posY
+                    generatePath()
+                    player.jump()
+                } else {
                     if (takeoffMode == ElytraBotTakeOffMode.SlowGlide) {
                         player.setVelocity(0.0, -0.04, 0.0)
                     } else {
-//                        takeoff()
+                        takeoff()
                     }
                 }
                 return@safeListener
             } else {
+                mc.timer.tickLength = 50.0f
                 packetsSent = 0
 
                 // If we arent moving anywhere then activate use baritone
