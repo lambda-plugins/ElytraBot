@@ -72,7 +72,7 @@ internal object ElytraBotModule : PluginModule(
     var travelMode by setting("Travel Mode", ElytraBotMode.Overworld)
     private var takeoffMode by setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
     private var elytraMode by setting("Flight Mode", ElytraBotFlyMode.Firework)
-    private val spoofHotbar by setting("Spoof Hotbar", false)
+    private val spoofHotbar by setting("Spoof Hotbar", true)
     //private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
     private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { elytraMode == ElytraBotFlyMode.Firework })
@@ -85,11 +85,9 @@ internal object ElytraBotModule : PluginModule(
     init {
         onEnable {
             runSafeR {
-                val up = 1
                 if (directional) {
                     //Calculate the direction so it will put it to diagonal if the player is on diagonal highway.
-
-                    goal = generateGoalFromDirection(Direction.fromEntity(player), up)
+                    goal = BlockPos(Direction.fromEntity(player).directionVec.multiply(6942069))
                 } else { if (goal == null) {
                         sendChatMessage("You need a goal position")
                         disable()
@@ -228,13 +226,9 @@ internal object ElytraBotModule : PluginModule(
             }
 
             //Remove passed positions from path
-            var remove = false
             val removePositions = ArrayList<BlockPos>()
             path.forEach { pos ->
-                if (!remove && player.position.distanceSq(pos) <= distance) {
-                    remove = true
-                }
-                if (remove) {
+                if (player.position.distanceSq(pos) <= distance) {
                     removePositions.add(pos)
                 }
             }
@@ -242,34 +236,9 @@ internal object ElytraBotModule : PluginModule(
                 path.remove(pos)
                 previous = pos
             }
-            if (path.isNotEmpty()) {
-                //if (direction != null) {
-                    //setStatus("Going to " + direction.name)
-                //} else {
-                    //setStatus("Going to X: $x Z: $z")
-//                if (blocksPerSecondTimer.hasPassed(1000)) {
-//                    blocksPerSecondTimer.reset()
-//                    if (lastSecondPos != null) {
-//                        blocksPerSecondCounter++
-//                        blocksPerSecond += BlockUtil.distance(getPlayerPos(), lastSecondPos)
-//                    }
-//                    lastSecondPos = getPlayerPos()
-//                }
-//                val seconds = (BlockUtil.distance(getPlayerPos(), goal) / (blocksPerSecond / blocksPerSecondCounter)) as Int
-//                val h = seconds / 3600
-//                val m = seconds % 3600 / 60
-//                val s = seconds % 60
-//                addToStatus("Estimated arrival in " + ChatFormatting.GOLD + h + "h " + m + "m " + s + "s", 1)
-//                if (flyMode.stringValue().equals("Firework")) {
-//                    //addToStatus("Estimated fireworks needed: " + ChatFormatting.GOLD + (seconds / fireworkDelay.doubleValue()) as Int, 2)
-//                }
-                }
-                if (elytraMode == ElytraBotFlyMode.Firework) {
-                    path.lastOrNull()?.let {
-                    //Rotate head to next position
-                    val pos = path.lastOrNull()?.let {
-                        Vec3d(it).add(0.5, 0.5, 0.5)
-                    }
+            if (path.isNotEmpty() && elytraMode == ElytraBotFlyMode.Firework) {
+                path.lastOrNull()?.let { pathPos ->
+                    val pos = Vec3d(pathPos).add(0.5, 0.5, 0.5)
 
                     val eyesPos = Vec3d(player.posX, player.posY + player.getEyeHeight(), player.posZ)
                     val diffX = pos.x - eyesPos.x
@@ -281,13 +250,9 @@ internal object ElytraBotModule : PluginModule(
 
                     val rotation = floatArrayOf(player.rotationYaw + MathHelper.wrapDegrees(yaw - player.rotationYaw), player.rotationPitch + MathHelper.wrapDegrees(pitch - player.rotationPitch))
 
-//                sendPlayerPacket {
-//                    rotate(Vec2f(rotation[0],rotation[1]))
-//                }
-
                     player.rotationYaw = rotation[0]
                     player.rotationPitch = rotation[1]
-                //}
+                }
             }
         }
     }
@@ -327,9 +292,8 @@ internal object ElytraBotModule : PluginModule(
             }
         }
 
-        if (path == null || path!!.size == 0 || isNextPathTooFar() || player.onGround) {
-            var start: BlockPos?
-            start = when {
+        if (path.isEmpty() || isNextPathTooFar() || player.onGround) {
+            var start = when {
                 travelMode == ElytraBotMode.Overworld -> {
                     player.position.add(0, 4, 0)
                 }
@@ -343,17 +307,12 @@ internal object ElytraBotModule : PluginModule(
             if (isNextPathTooFar()) {
                 start = player.position
             }
-            path = start?.let {
-                goal?.let { goalPos ->
-                    AStar.generatePath(it, goalPos, positions, checkPositions, 500)
-                }
+            goal?.let {
+                path = AStar.generatePath(start, it, positions, checkPositions, 500)
             }
-
         } else {
-            path = path?.let { safePath ->
-                goal?.let { safeGoal ->
-                    AStar.generatePath(safePath[0], safeGoal, positions, checkPositions, 500)
-                }
+            goal?.let {
+                path = AStar.generatePath(path[0], it, positions, checkPositions, 500)
             }
         }
     }
@@ -378,14 +337,10 @@ internal object ElytraBotModule : PluginModule(
         connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
     }
 
-    private fun generateGoalFromDirection(direction: Direction, up: Int): BlockPos {
-        return BlockPos(direction.directionVec.multiply(6942069))
-    }
-
     private fun SafeClientEvent.isNextPathTooFar(): Boolean {
-        return try {
-            player.position.distanceTo(path!![path!!.size - 1]) > 15
-        } catch (e: Exception) {
+        return path.lastOrNull()?.let {
+            player.position.distanceTo(it) > 15
+        } ?: run {
             false
         }
     }
