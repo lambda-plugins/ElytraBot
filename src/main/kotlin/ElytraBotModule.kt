@@ -84,6 +84,7 @@ internal object ElytraBotModule : PluginModule(
     private val minTakeoffHeight by setting("Min Takeoff Height", 0.5f, 0.0f..1.5f, 0.1f, { !highPingOptimize })
     private val spoofHotbar by setting("Spoof Hotbar", true)
     private val aStarRadius by setting("AStarRadius", 3f, 1f..10f, 0.5f)
+    private val minElytraVelocity by setting("MinElytraVelocity", 1.0, 0.1..5.0, 0.1)
     private val interacting by setting("Rotation Mode", RotationMode.VIEW_LOCK)
 //    private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
@@ -212,7 +213,7 @@ internal object ElytraBotModule : PluginModule(
                     }
 
                     //Click on fireworks
-                    if (player.speed < 0.8 && !lagback && fireworkTimer.tick((fireworkDelay * 1000).toInt())) {
+                    if (player.speed < minElytraVelocity && !lagback && fireworkTimer.tick((fireworkDelay * 1000).toInt())) {
                         activateFirework()
                     }
                 }

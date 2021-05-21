@@ -91,7 +91,7 @@ object AStar {
                     if (mc.world.getBlockState(check).material.isSolid || !mc.world.getChunk(check).isLoaded) {
                         continue@outer
                     }
-                    if (mc.world.getBlockState(check) == Blocks.LAVA && ElytraBotModule.avoidLava) {
+                    if (mc.world.getBlockState(check).block == Blocks.LAVA && ElytraBotModule.avoidLava) {
                         continue@outer
                     }
 
