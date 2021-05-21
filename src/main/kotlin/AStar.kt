@@ -4,9 +4,6 @@ import net.minecraft.util.math.BlockPos
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-var mc: Minecraft = Minecraft.getMinecraft()
-
-
 object AStar {
     private var check = false
 
@@ -16,7 +13,7 @@ object AStar {
      * @positions The nearby positions that can possibly by added to the open list
      * @checkPositions The positions it will check not to be solid when iterating the above list
      */
-    fun generatePath(start: BlockPos, goal: BlockPos, positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, loopAmount: Int): ArrayList<BlockPos> {
+    fun generatePath(mc: Minecraft, start: BlockPos, goal: BlockPos, positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, loopAmount: Int): ArrayList<BlockPos> {
         AStarNode.nodes.clear()
         var current = start
         var closest = current
@@ -32,22 +29,19 @@ object AStar {
 
             //Get the pos with lowest f cost from open list and put it to closed list
             var lowestFCost = Int.MAX_VALUE.toDouble()
-            for (pos in open) {
-                val fCost = fCost(pos, goal, start)
+            open.forEach {
+                val fCost = fCost(it, goal, start)
                 if (fCost < lowestFCost) {
                     lowestFCost = fCost
-                    current = pos
+                    current = it
                 }
             }
 
             //Update the lists
             closed.add(current)
             open.remove(current)
-            val addToOpen = addToOpen(positions, checkPositions, current, goal, start, open, closed)
-            if (addToOpen != null) {
-                open.addAll(addToOpen)
-            } else {
-                break
+            getOpen(mc, positions, checkPositions, current, start, open, closed)?.let {
+                open.addAll(it)
             }
 
             //Set the closest pos.
@@ -68,7 +62,7 @@ object AStar {
         //As the goal is probably out of render distance.
         return if (!check) {
             check = true
-            generatePath(start, closest, positions, checkPositions, loopAmount)
+            generatePath(mc, start, closest, positions, checkPositions, loopAmount)
         } else {
             check = false
             ArrayList()
@@ -78,17 +72,17 @@ object AStar {
     /**
      * Adds the nearby positions to the open list. And updates the best parent for the AStarNodes
      */
-    private fun addToOpen(positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, current: BlockPos, goal: BlockPos?, start: BlockPos, open: ArrayList<BlockPos>, closed: ArrayList<BlockPos>): ArrayList<BlockPos>? {
+    private fun getOpen(mc: Minecraft, positions: Array<BlockPos>, checkPositions: ArrayList<BlockPos>, current: BlockPos, start: BlockPos, open: ArrayList<BlockPos>, closed: ArrayList<BlockPos>): ArrayList<BlockPos>? {
         val list = ArrayList<BlockPos>()
         val positions2 = ArrayList<BlockPos>()
-        for (pos in positions) {
-            positions2.add(current.add(pos.x, pos.y, pos.z))
+        positions.forEach {
+            positions2.add(current.add(it.x, it.y, it.z))
         }
         outer@ for (pos in positions2) {
             if (!mc.world.getBlockState(pos).material.isSolid && !closed.contains(pos)) {
                 val checkPositions2 = ArrayList<BlockPos>()
-                for (b in checkPositions) {
-                    checkPositions2.add(pos.add(b.x, b.y, b.z))
+                checkPositions.forEach {
+                    checkPositions2.add(pos.add(it.x, it.y, it.z))
                 }
                 for (check in checkPositions2) {
                     if (ElytraBotModule.travelMode == ElytraBotModule.ElytraBotMode.Highway && !mc.world.getChunk(check).isLoaded) {

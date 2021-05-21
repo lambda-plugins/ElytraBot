@@ -2,6 +2,9 @@ import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.manager.managers.HotbarManager
 import com.lambda.client.manager.managers.HotbarManager.serverSideItem
 import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
+import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
+import com.lambda.client.mixin.extension.tickLength
+import com.lambda.client.mixin.extension.timer
 import com.lambda.client.module.Category
 import com.lambda.client.plugin.api.PluginModule
 import com.lambda.client.util.MovementUtils.speed
@@ -9,13 +12,18 @@ import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.Direction
+import com.lambda.client.util.math.Vec2f
+import com.lambda.client.util.math.VectorUtils
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.multiply
 import com.lambda.client.util.math.VectorUtils.toVec3d
-import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
+import com.lambda.client.util.threads.defaultScope
+import com.lambda.client.util.threads.runSafe
 import com.lambda.client.util.threads.runSafeR
 import com.lambda.client.util.threads.safeListener
+import com.lambda.client.util.world.getGroundPos
+import kotlinx.coroutines.launch
 import net.minecraft.init.Items
 import net.minecraft.init.SoundEvents
 import net.minecraft.item.ItemStack
@@ -72,15 +80,24 @@ internal object ElytraBotModule : PluginModule(
     var travelMode by setting("Travel Mode", ElytraBotMode.Overworld)
     private var takeoffMode by setting("Takeoff Mode", ElytraBotTakeOffMode.Jump)
     private var elytraMode by setting("Flight Mode", ElytraBotFlyMode.Firework)
+    private val highPingOptimize by setting("High Ping Optimize", false)
+    private val minTakeoffHeight by setting("Min Takeoff Height", 0.5f, 0.0f..1.5f, 0.1f, { !highPingOptimize })
     private val spoofHotbar by setting("Spoof Hotbar", true)
-    //private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
+    private val aStarRadius by setting("AStarRadius", 3f, 1f..10f, 0.5f)
+    private val interacting by setting("Rotation Mode", RotationMode.VIEW_LOCK)
+//    private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
     private val fireworkDelay by setting("Firework Delay", 1f, 0.0f..10.0f, 0.25f, { elytraMode == ElytraBotFlyMode.Firework })
-    var pathfinding by setting("Pathfinding", true)
+//    var pathfinding by setting("Pathfinding", true)
     var avoidLava by setting("AvoidLava", true)
     private var directional by setting("Directional", false)
-    private var toggleOnPop by setting("ToggleOnPop", false)
-    private val maxY by setting("Max Y", 1f, 0.0f..300.0f, 0.25f)
+//    private var toggleOnPop by setting("ToggleOnPop", false)
+//    private val maxY by setting("Max Y", 1f, 0.0f..300.0f, 0.25f)
+
+    @Suppress("UNUSED")
+    private enum class RotationMode {
+        OFF, SPOOF, VIEW_LOCK
+    }
 
     init {
         onEnable {
@@ -98,14 +115,16 @@ internal object ElytraBotModule : PluginModule(
         }
 
         onDisable {
-            path = mutableListOf()
-            useBaritoneCounter = 0
-            lagback = false
-            lagbackCounter = 0
-            blocksPerSecond = 0.0
-            blocksPerSecondCounter = 0
-            lastSecondPos = null
-            jumpY = -1.0
+            runSafe {
+                path = mutableListOf()
+                useBaritoneCounter = 0
+                lagback = false
+                lagbackCounter = 0
+                blocksPerSecond = 0.0
+                blocksPerSecondCounter = 0
+                lastSecondPos = null
+                jumpY = -1.0
+            }
         }
 
         safeListener<TickEvent.ClientTickEvent> {
@@ -148,47 +167,33 @@ internal object ElytraBotModule : PluginModule(
                 return@safeListener
             }
 
-
-
             if (!player.isElytraFlying) {
-
-                //if (packetsSent < 20) setStatus("Trying to takeoff")
+                // if (packetsSent < 20) setStatus("Trying to takeoff")
                 fireworkTimer.reset()
 
-                //Jump if on ground
+                // Jump if on ground
                 if (player.onGround) {
-                    jumpY = player.posY
-                    generatePath()
-                    player.jump()
+//                    jumpY = player.posY
+//                    defaultScope.launch {
+//                        generatePath()
+//                    }
+//                    player.jump()
                 } else if (player.posY < player.lastTickPosY) {
                     if (takeoffMode == ElytraBotTakeOffMode.SlowGlide) {
                         player.setVelocity(0.0, -0.04, 0.0)
-                    }
-
-                    //Don't send anymore packets for about 15 seconds if the takeoff isn't successful.
-                    //Bcs 2b2t has this annoying thing where it will not let u open elytra if u don't stop sending the packets for a while
-                    if (packetsSent <= 15) {
-                        if (takeoffTimer.time >= 650) {
-                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
-                            takeoffTimer.reset()
-                            packetTimer.reset()
-                            packetsSent++
-                        }
-                    } else if (packetTimer.time >= 15000) {//hasPassed(15000)) {
-                        packetsSent = 0
                     } else {
-                        //setStatus("Waiting for 15s before sending elytra open packets again")
+//                        takeoff()
                     }
                 }
                 return@safeListener
             } else {
                 packetsSent = 0
 
-                //If we arent moving anywhere then activate usebaritone
+                // If we arent moving anywhere then activate use baritone
                 val speed = player.speed
 
                 if (elytraMode == ElytraBotFlyMode.Firework) {
-                    //Prevent lagback on 2b2t by not clicking on fireworks. I hope hause would fix hes plugins tho
+                    // Prevent lagback on 2b2t by not clicking on fireworks. I hope hause would fix hes plugins tho
                     if (speed > 3) {
                         lagback = true
                     }
@@ -248,10 +253,22 @@ internal object ElytraBotModule : PluginModule(
                     val yaw = Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f
                     val pitch = (-Math.toDegrees(atan2(diffY, diffXZ))).toFloat()
 
-                    val rotation = floatArrayOf(player.rotationYaw + MathHelper.wrapDegrees(yaw - player.rotationYaw), player.rotationPitch + MathHelper.wrapDegrees(pitch - player.rotationPitch))
+                    val rotation = Vec2f(player.rotationYaw + MathHelper.wrapDegrees(yaw - player.rotationYaw), player.rotationPitch + MathHelper.wrapDegrees(pitch - player.rotationPitch))
 
-                    player.rotationYaw = rotation[0]
-                    player.rotationPitch = rotation[1]
+                    when (interacting) {
+                        RotationMode.SPOOF -> {
+                            sendPlayerPacket {
+                                rotate(rotation)
+                            }
+                        }
+                        RotationMode.VIEW_LOCK -> {
+                            player.rotationYaw = rotation.x
+                            player.rotationPitch = rotation.y
+                        }
+                        else -> {
+                            // RotationMode.OFF
+                        }
+                    }
                 }
             }
         }
@@ -272,23 +289,14 @@ internal object ElytraBotModule : PluginModule(
             BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1),
             BlockPos(0, -1, 0), BlockPos(0, 1, 0))
 
-        var checkPositions = ArrayList<BlockPos>()
-
-        when (travelMode) {
+        val checkPositions = when (travelMode) {
             ElytraBotMode.Highway -> {
                 val list = arrayOf(BlockPos(1, 0, 0), BlockPos(-1, 0, 0), BlockPos(0, 0, 1), BlockPos(0, 0, -1),
                     BlockPos(1, 0, 1), BlockPos(-1, 0, -1), BlockPos(-1, 0, 1), BlockPos(1, 0, -1))
-                checkPositions = ArrayList(list.asList())
+                ArrayList(list.asList())
             }
             ElytraBotMode.Overworld -> {
-                val radius = 3
-                for (x in -radius until radius) {
-                    for (z in -radius until radius) {
-                        for (y in radius downTo -radius + 1) {
-                            checkPositions.add(BlockPos(x, y, z))
-                        }
-                    }
-                }
+                VectorUtils.getBlockPosInSphere(Vec3d.ZERO, aStarRadius)
             }
         }
 
@@ -308,12 +316,31 @@ internal object ElytraBotModule : PluginModule(
                 start = player.position
             }
             goal?.let {
-                path = AStar.generatePath(start, it, positions, checkPositions, 500)
+                path = AStar.generatePath(mc, start, it, positions, checkPositions, 500)
             }
         } else {
             goal?.let {
-                path = AStar.generatePath(path[0], it, positions, checkPositions, 500)
+                path = AStar.generatePath(mc, path[0], it, positions, checkPositions, 500)
             }
+        }
+    }
+
+    private fun SafeClientEvent.takeoff() {
+        /* Pause Takeoff if server is lagging, player is in water/lava, or player is on ground */
+        val timerSpeed = if (highPingOptimize) 400.0f else 200.0f
+        val height = if (highPingOptimize) 0.0f else minTakeoffHeight
+        val closeToGround = player.posY <= world.getGroundPos(player).y + height && !mc.isSingleplayer
+
+        if (player.motionY < 0 && !highPingOptimize || player.motionY < -0.02) {
+            if (closeToGround) {
+                mc.timer.tickLength = 25.0f
+                return
+            }
+
+            if (!mc.isSingleplayer) mc.timer.tickLength = timerSpeed * 2.0f
+            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
+        } else if (highPingOptimize && !closeToGround) {
+            mc.timer.tickLength = timerSpeed
         }
     }
 
