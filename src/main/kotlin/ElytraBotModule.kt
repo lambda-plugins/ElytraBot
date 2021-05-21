@@ -85,6 +85,7 @@ internal object ElytraBotModule : PluginModule(
     private val spoofHotbar by setting("Spoof Hotbar", true)
     private val aStarRadius by setting("AStarRadius", 3f, 1f..10f, 0.5f)
     private val minElytraVelocity by setting("MinElytraVelocity", 1.0, 0.1..5.0, 0.1)
+    private val aStarLoops by setting("aStarLoops", 500, 1..1000, 1)
     private val interacting by setting("Rotation Mode", RotationMode.VIEW_LOCK)
 //    private val elytraFlySpeed by setting("Elytra Speed", 1f, 0.1f..20.0f, 0.25f, { ElytraMode != ElytraBotFlyMode.Firework })
     private val elytraFlyManeuverSpeed by setting("Maneuver Speed", 1f, 0.0f..10.0f, 0.25f)
@@ -317,11 +318,11 @@ internal object ElytraBotModule : PluginModule(
                 start = player.position
             }
             goal?.let {
-                path = AStar.generatePath(mc, start, it, positions, checkPositions, 500)
+                path = AStar.generatePath(mc, start, it, positions, checkPositions, aStarLoops)
             }
         } else {
             goal?.let {
-                path = AStar.generatePath(mc, path[0], it, positions, checkPositions, 500)
+                path = AStar.generatePath(mc, path[0], it, positions, checkPositions, aStarLoops)
             }
         }
     }
