@@ -6,7 +6,7 @@ internal object ElytraBotPlugin : Plugin() {
         // Load any modules, commands, or HUD elements here
         modules.add(ElytraBotModule)
         commands.add(ElytraBotCommand)
-
+        hudElements.add(ElytraBotStatus)
     }
 
     override fun onUnload() {}
