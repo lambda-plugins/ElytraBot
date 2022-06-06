@@ -48,7 +48,7 @@ import kotlin.math.abs
 
 
 internal object ElytraBotModule : PluginModule(
-    name = "ElytraBota",
+    name = "ElytraBot",
     category = Category.MOVEMENT,
     description = "Baritone like Elytra bot module, credit CookieClient, recoded by kamigen cuz others are lazy (?)",
     pluginMain = ElytraBotPlugin
