@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "compatibilityLevel": "JAVA_8",
+  "package": "com.lambda.mixin",
+  "refmap": "mixins.ExamplePlugin.refmap.json",
+  "client": [
+    "MixinMinecraft"
+  ]
+}

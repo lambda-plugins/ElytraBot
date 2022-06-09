@@ -1,12 +1,13 @@
 {
   "name": "ElytraBot",
-  "version": "1.0",
+  "version": "1.1",
   "authors": [
+    "Kamigen :troll:",
     "bebeli555",
     "czho",
     "Constructor"
   ],
   "description": "AStar elytra bot",
   "main_class": "ElytraBotPlugin",
-  "min_api_version": "2.05.01"
+  "min_api_version": "3.0"
 }
